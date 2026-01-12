@@ -1,0 +1,2095 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAppToast } from "@/components/ui/toaster";
+import { GripVertical } from "lucide-react";
+
+// ---------- Helpers ----------
+
+const slugifyTitle = (title: string) =>
+  title
+    .toLowerCase()
+    .trim()
+    .replace(/[\s_]+/g, "-") // spaces/underscores -> -
+    .replace(/[^a-z0-9-]/g, "") // remove non-alphanumeric except -
+    .replace(/-+/g, "-") // collapse multiple -
+    .replace(/^-|-$/g, ""); // trim - from ends
+
+const moveItem = <T,>(arr: T[], from: number, to: number) => {
+  const copy = [...arr];
+  const [removed] = copy.splice(from, 1);
+  copy.splice(to, 0, removed);
+  return copy;
+};
+
+// ---------- Types for SEO & Google Ads details ----------
+
+type MetricStat = {
+  label: string;
+  value: string;
+};
+
+type SeoDetails = {
+  seoOverview?: string;
+  clientChallenge?: string;
+  primarySeoGoal?: string;
+  seoSummaryImage?: string;
+  seoFocusAreas?: string[];
+  seoStrategySummary?: string;
+  seoToolsUsed?: string[];
+  seoDeliverables?: string[];
+  stats?: MetricStat[];
+};
+
+type GoogleAdsDetails = {
+  googleAdsSummaryImage?: string;
+  industry?: string;
+  timeline?: string;
+  campaignOverview?: string;
+  googleAdsClientChallenge?: string;
+  primaryCampaignGoal?: string;
+  campaignType?: string;
+  platforms?: string[];
+  monthlyAdSpend?: string;
+  googleAdsStrategySummary?: string;
+  targetLocations?: string[];
+  trackingAndAnalytics?: string[];
+  stats?: MetricStat[];
+};
+
+type PortfolioItem = {
+  id: number;
+  slug: string;
+  title: string;
+  subTitle: string;
+  industry: string;
+  client?: string;
+  badge?: string;
+  investment?: string;
+  totalValue?: string;
+  roi?: string;
+  description?: string;
+  features?: string[];
+  techStack?: string[];
+  timeline?: string;
+  imageUrl?: string;
+  image?: string;
+  isFeatured: boolean;
+  orderIndex: number;
+  isActive: boolean;
+  serviceCategory?: string;
+  createdAt: string;
+  updatedAt: string;
+
+  // NEW nested fields
+  seoDetails?: SeoDetails;
+  googleAdsDetails?: GoogleAdsDetails;
+
+  // NEW: project URL / CTA
+  projectUrl?: string;
+  projectUrlLabel?: string;
+};
+
+type PortfolioHeroStat = {
+  kpi: string;
+  label: string;
+};
+
+type PortfolioTestimonial = {
+  quote: string;
+  who: string;
+  tag?: string;
+};
+
+type PortfolioContent = {
+  heroTitle: string;
+  heroHighlight?: string;
+  heroSubtitle?: string;
+  heroDescription?: string;
+  heroStats: PortfolioHeroStat[];
+  heroPrimaryCtaText?: string;
+  heroPrimaryCtaHref?: string;
+  heroSecondaryCtaText?: string;
+  heroSecondaryCtaHref?: string;
+  testimonialsTitle?: string;
+  testimonialsSubtitle?: string;
+  testimonials: PortfolioTestimonial[];
+};
+
+const emptySeoDetails: SeoDetails = {
+  seoOverview: "",
+  clientChallenge: "",
+  primarySeoGoal: "",
+  seoSummaryImage: "",
+  seoFocusAreas: [],
+  seoStrategySummary: "",
+  seoToolsUsed: [],
+  seoDeliverables: [],
+  stats: [],
+};
+
+const emptyGoogleAdsDetails: GoogleAdsDetails = {
+  googleAdsSummaryImage: "",
+  industry: "",
+  timeline: "",
+  campaignOverview: "",
+  googleAdsClientChallenge: "",
+  primaryCampaignGoal: "",
+  campaignType: "",
+  platforms: [],
+  monthlyAdSpend: "",
+  googleAdsStrategySummary: "",
+  targetLocations: [],
+  trackingAndAnalytics: [],
+  stats: [],
+};
+
+const emptyForm: Partial<PortfolioItem> = {
+  slug: "",
+  title: "",
+  subTitle: "",
+  industry: "",
+  client: "",
+  badge: "",
+  investment: "",
+  totalValue: "",
+  roi: "",
+  description: "",
+  features: [],
+  techStack: [],
+  timeline: "",
+  imageUrl: "",
+  image: "",
+  isFeatured: false,
+  isActive: true,
+  orderIndex: 0,
+  serviceCategory: "",
+  seoDetails: emptySeoDetails,
+  googleAdsDetails: emptyGoogleAdsDetails,
+  projectUrl: "",
+  projectUrlLabel: "",
+};
+
+const emptyContent: PortfolioContent = {
+  heroTitle: "",
+  heroHighlight: "",
+  heroSubtitle: "",
+  heroDescription: "",
+  heroStats: [],
+  heroPrimaryCtaText: "",
+  heroPrimaryCtaHref: "",
+  heroSecondaryCtaText: "",
+  heroSecondaryCtaHref: "",
+  testimonialsTitle: "",
+  testimonialsSubtitle: "",
+  testimonials: [],
+};
+
+// Service categories matching your services page
+const serviceCategories = [
+  {
+    id: "seo",
+    title: "SEO Services",
+  },
+  {
+    id: "web-development",
+    title: "Website Design & Development",
+  },
+  {
+    id: "dedicated-resources",
+    title: "Dedicated Resources",
+  },
+  {
+    id: "google-ads",
+    title: "Google Ads",
+  },
+  {
+    id: "ai-development",
+    title: "AI Web Agents/AI Development",
+  },
+  {
+    id: "custom-app-development",
+    title: "Custom Web & Mobile App Development",
+  },
+];
+
+export function PortfolioItemsManager() {
+  const [form, setForm] = useState<Partial<PortfolioItem>>(emptyForm);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [savingContent, setSavingContent] = useState(false);
+  const [contentForm, setContentForm] =
+    useState<PortfolioContent>(emptyContent);
+  const [contentDialogOpen, setContentDialogOpen] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [slugTouched, setSlugTouched] = useState(false); // ✅ track manual slug edit
+
+  // ✅ Service tabs filter
+  const [activeServiceTab, setActiveServiceTab] = useState<string>("all");
+  const normalizeCategory = (v?: string) => (v || "").trim().toLowerCase();
+  const getCountForCategory = (catId: string, list: PortfolioItem[]) => {
+    if (catId === "all") return list.length;
+    return list.filter((x) => normalizeCategory(x.serviceCategory) === catId)
+      .length;
+  };
+
+  // ✅ Drag & drop ordering state
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
+  const dragFromIdRef = useRef<number | null>(null);
+
+  const { success, error: toastError } = useAppToast();
+  const queryClient = useQueryClient();
+
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
+
+  const {
+    data: items = [],
+    isLoading,
+    error,
+  } = useQuery<PortfolioItem[]>({
+    queryKey: ["/api/admin/portfolio-items"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/portfolio-items", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to fetch portfolio items");
+      return res.json();
+    },
+    enabled: Boolean(token),
+  });
+
+  const {
+    data: contentData,
+    isLoading: contentLoading,
+    error: contentError,
+  } = useQuery<PortfolioContent>({
+    queryKey: ["/api/admin/portfolio-content"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/portfolio-content", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to fetch portfolio content");
+      return res.json();
+    },
+    enabled: Boolean(token),
+  });
+
+  // ✅ Always show sorted by orderIndex (stable)
+  const sortedItems = useMemo(() => {
+    const copy = [...items];
+    copy.sort((a, b) => {
+      const ao = Number.isFinite(a.orderIndex) ? a.orderIndex : 0;
+      const bo = Number.isFinite(b.orderIndex) ? b.orderIndex : 0;
+      if (ao !== bo) return ao - bo;
+      return a.id - b.id;
+    });
+    return copy;
+  }, [items]);
+
+  useEffect(() => {
+    if (!editingId) return;
+    const it = items.find((i) => i.id === editingId);
+    if (it) {
+      setForm({
+        ...it,
+        features: it.features || [],
+        techStack: it.techStack || [],
+        seoDetails: {
+          ...emptySeoDetails,
+          ...(it.seoDetails || {}),
+          seoFocusAreas: it.seoDetails?.seoFocusAreas || [],
+          seoToolsUsed: it.seoDetails?.seoToolsUsed || [],
+          seoDeliverables: it.seoDetails?.seoDeliverables || [],
+          stats: it.seoDetails?.stats || [],
+        },
+        googleAdsDetails: {
+          ...emptyGoogleAdsDetails,
+          ...(it.googleAdsDetails || {}),
+          platforms: it.googleAdsDetails?.platforms || [],
+          targetLocations: it.googleAdsDetails?.targetLocations || [],
+          trackingAndAnalytics: it.googleAdsDetails?.trackingAndAnalytics || [],
+          stats: it.googleAdsDetails?.stats || [],
+        },
+      });
+      setSlugTouched(true); // ✅ do not auto-change slug when editing
+    }
+  }, [editingId, items]);
+
+  useEffect(() => {
+    if (contentData) {
+      setContentForm({
+        heroTitle: contentData.heroTitle || "",
+        heroHighlight: contentData.heroHighlight || "",
+        heroSubtitle: contentData.heroSubtitle || "",
+        heroDescription: contentData.heroDescription || "",
+        heroStats: Array.isArray(contentData.heroStats)
+          ? contentData.heroStats
+          : [],
+        heroPrimaryCtaText: contentData.heroPrimaryCtaText || "",
+        heroPrimaryCtaHref: contentData.heroPrimaryCtaHref || "",
+        heroSecondaryCtaText: contentData.heroSecondaryCtaText || "",
+        heroSecondaryCtaHref: contentData.heroSecondaryCtaHref || "",
+        testimonialsTitle: contentData.testimonialsTitle || "",
+        testimonialsSubtitle: contentData.testimonialsSubtitle || "",
+        testimonials: Array.isArray(contentData.testimonials)
+          ? contentData.testimonials
+          : [],
+      });
+    } else if (!contentLoading && !contentError) {
+      setContentForm(emptyContent);
+    }
+  }, [contentData, contentLoading, contentError]);
+
+  const handleChange = (field: keyof PortfolioItem, value: any) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSeoDetailsChange = (field: keyof SeoDetails, value: any) => {
+    setForm((prev) => ({
+      ...prev,
+      seoDetails: {
+        ...(prev.seoDetails || emptySeoDetails),
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleGoogleAdsDetailsChange = (
+    field: keyof GoogleAdsDetails,
+    value: any,
+  ) => {
+    setForm((prev) => ({
+      ...prev,
+      googleAdsDetails: {
+        ...(prev.googleAdsDetails || emptyGoogleAdsDetails),
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleContentChange = (field: keyof PortfolioContent, value: any) => {
+    setContentForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const updateHeroStat = (
+    index: number,
+    field: keyof PortfolioHeroStat,
+    value: string,
+  ) => {
+    setContentForm((prev) => {
+      const stats = [...(prev.heroStats || [])];
+      stats[index] = { ...stats[index], [field]: value };
+      return { ...prev, heroStats: stats };
+    });
+  };
+
+  const addHeroStat = () => {
+    setContentForm((prev) => ({
+      ...prev,
+      heroStats: [...(prev.heroStats || []), { kpi: "", label: "" }],
+    }));
+  };
+
+  const removeHeroStat = (index: number) => {
+    setContentForm((prev) => ({
+      ...prev,
+      heroStats: prev.heroStats.filter((_, i) => i !== index),
+    }));
+  };
+
+  const updateTestimonial = (
+    index: number,
+    field: keyof PortfolioTestimonial,
+    value: string,
+  ) => {
+    setContentForm((prev) => {
+      const testimonials = [...(prev.testimonials || [])];
+      testimonials[index] = { ...testimonials[index], [field]: value };
+      return { ...prev, testimonials };
+    });
+  };
+
+  const addTestimonial = () => {
+    setContentForm((prev) => ({
+      ...prev,
+      testimonials: [
+        ...(prev.testimonials || []),
+        { quote: "", who: "", tag: "" },
+      ],
+    }));
+  };
+
+  const removeTestimonial = (index: number) => {
+    setContentForm((prev) => ({
+      ...prev,
+      testimonials: prev.testimonials.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const isSeo = form.serviceCategory === "seo";
+      const isGoogleAds = form.serviceCategory === "google-ads";
+
+      const rawSeo = form.seoDetails || emptySeoDetails;
+      const rawGoogleAds = form.googleAdsDetails || emptyGoogleAdsDetails;
+
+      const seoDetailsPayload = isSeo
+        ? {
+            seoOverview: rawSeo.seoOverview || "",
+            clientChallenge: rawSeo.clientChallenge || "",
+            primarySeoGoal: rawSeo.primarySeoGoal || "",
+            seoSummaryImage: rawSeo.seoSummaryImage || "",
+            seoFocusAreas: Array.isArray(rawSeo.seoFocusAreas)
+              ? rawSeo.seoFocusAreas
+              : [],
+            seoStrategySummary: rawSeo.seoStrategySummary || "",
+            seoToolsUsed: Array.isArray(rawSeo.seoToolsUsed)
+              ? rawSeo.seoToolsUsed
+              : [],
+            seoDeliverables: Array.isArray(rawSeo.seoDeliverables)
+              ? rawSeo.seoDeliverables
+              : [],
+            stats: (rawSeo.stats || [])
+              .map((s) => ({
+                label: s.label?.trim() || "",
+                value: s.value?.trim() || "",
+              }))
+              .filter((s) => s.label || s.value),
+          }
+        : undefined;
+
+      const googleAdsDetailsPayload = isGoogleAds
+        ? {
+            googleAdsSummaryImage: rawGoogleAds.googleAdsSummaryImage || "",
+            industry: rawGoogleAds.industry || "",
+            timeline: rawGoogleAds.timeline || "",
+            campaignOverview: rawGoogleAds.campaignOverview || "",
+            googleAdsClientChallenge:
+              rawGoogleAds.googleAdsClientChallenge || "",
+            primaryCampaignGoal: rawGoogleAds.primaryCampaignGoal || "",
+            campaignType: rawGoogleAds.campaignType || "",
+            platforms: Array.isArray(rawGoogleAds.platforms)
+              ? rawGoogleAds.platforms
+              : [],
+            monthlyAdSpend: rawGoogleAds.monthlyAdSpend || "",
+            googleAdsStrategySummary:
+              rawGoogleAds.googleAdsStrategySummary || "",
+            targetLocations: Array.isArray(rawGoogleAds.targetLocations)
+              ? rawGoogleAds.targetLocations
+              : [],
+            trackingAndAnalytics: Array.isArray(
+              rawGoogleAds.trackingAndAnalytics,
+            )
+              ? rawGoogleAds.trackingAndAnalytics
+              : [],
+            stats: (rawGoogleAds.stats || [])
+              .map((s) => ({
+                label: s.label?.trim() || "",
+                value: s.value?.trim() || "",
+              }))
+              .filter((s) => s.label || s.value),
+          }
+        : undefined;
+
+      const payload: any = {
+        slug: form.slug,
+        title: form.title,
+        subTitle: form.subTitle,
+        industry: form.industry,
+        client: form.client,
+        badge: form.badge,
+        investment: form.investment,
+        totalValue: form.totalValue,
+        roi: form.roi,
+        description: form.description,
+        features: Array.isArray(form.features)
+          ? form.features
+          : String(form.features || "")
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean),
+        techStack: Array.isArray(form.techStack)
+          ? form.techStack
+          : String(form.techStack || "")
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean),
+        timeline: form.timeline,
+        imageUrl: form.imageUrl,
+        image: form.image || form.imageUrl,
+        isFeatured: Boolean(form.isFeatured),
+        orderIndex: Number(form.orderIndex || 0),
+        isActive: form.isActive !== false,
+        serviceCategory: form.serviceCategory || undefined,
+        projectUrl: form.projectUrl || "",
+        projectUrlLabel: form.projectUrlLabel || "",
+      };
+
+      if (seoDetailsPayload) payload.seoDetails = seoDetailsPayload;
+      if (googleAdsDetailsPayload) payload.googleAdsDetails = googleAdsDetailsPayload;
+
+      const url = editingId
+        ? `/api/admin/portfolio-items/${editingId}`
+        : "/api/admin/portfolio-items";
+      const method = editingId ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Failed to save portfolio item");
+      }
+      await queryClient.invalidateQueries({
+        queryKey: ["/api/admin/portfolio-items"],
+      });
+      setForm(emptyForm);
+      setEditingId(null);
+      setSlugTouched(false);
+
+      success("Portfolio item saved successfully.", "Success");
+    } catch (err) {
+      console.error(err);
+      toastError(
+        (err as Error).message || "Failed to save portfolio item.",
+        "Error",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Delete this portfolio item?")) return;
+    try {
+      const res = await fetch(`/api/admin/portfolio-items/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to delete portfolio item");
+      await queryClient.invalidateQueries({
+        queryKey: ["/api/admin/portfolio-items"],
+      });
+      if (editingId === id) {
+        setEditingId(null);
+        setForm(emptyForm);
+        setSlugTouched(false);
+      }
+
+      success("Portfolio item deleted.", "Deleted");
+    } catch (err) {
+      console.error(err);
+      toastError(
+        (err as Error).message || "Failed to delete portfolio item.",
+        "Error",
+      );
+    }
+  };
+
+  const resetForm = () => {
+    setEditingId(null);
+    setForm(emptyForm);
+    setSlugTouched(false);
+  };
+
+  const handleSaveContent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingContent(true);
+    try {
+      const payload = {
+        ...contentForm,
+        heroStats: (contentForm.heroStats || [])
+          .map((stat) => ({
+            kpi: stat.kpi?.trim() || "",
+            label: stat.label?.trim() || "",
+          }))
+          .filter((stat) => stat.kpi || stat.label),
+        testimonials: (contentForm.testimonials || [])
+          .map((t) => ({
+            quote: t.quote?.trim() || "",
+            who: t.who?.trim() || "",
+            tag: t.tag?.trim() || undefined,
+          }))
+          .filter((t) => t.quote && t.who),
+      };
+
+      const res = await fetch("/api/admin/portfolio-content", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to update portfolio content");
+      }
+      await queryClient.invalidateQueries({
+        queryKey: ["/api/admin/portfolio-content"],
+      });
+      setContentForm({
+        heroTitle: data.heroTitle || "",
+        heroHighlight: data.heroHighlight || "",
+        heroSubtitle: data.heroSubtitle || "",
+        heroDescription: data.heroDescription || "",
+        heroStats: Array.isArray(data.heroStats) ? data.heroStats : [],
+        heroPrimaryCtaText: data.heroPrimaryCtaText || "",
+        heroPrimaryCtaHref: data.heroPrimaryCtaHref || "",
+        heroSecondaryCtaText: data.heroSecondaryCtaText || "",
+        heroSecondaryCtaHref: data.heroSecondaryCtaHref || "",
+        testimonialsTitle: data.testimonialsTitle || "",
+        testimonialsSubtitle: data.testimonialsSubtitle || "",
+        testimonials: Array.isArray(data.testimonials) ? data.testimonials : [],
+      });
+      setContentDialogOpen(false);
+
+      success("Portfolio page content updated.", "Success");
+    } catch (err) {
+      console.error(err);
+      toastError(
+        (err as Error).message || "Failed to update portfolio content.",
+        "Error",
+      );
+    } finally {
+      setSavingContent(false);
+    }
+  };
+
+  const selectedCategory = serviceCategories.find(
+    (c) => c.id === form.serviceCategory,
+  );
+
+  const showROI =
+    selectedCategory?.title?.toLowerCase().includes("google ads") ?? false;
+
+  const isSeo = form.serviceCategory === "seo";
+  const isGoogleAds = form.serviceCategory === "google-ads";
+
+  const seo = form.seoDetails || emptySeoDetails;
+  const googleAds = form.googleAdsDetails || emptyGoogleAdsDetails;
+
+  // ✅ Filtered list for tabs (sorted)
+  const filteredItems =
+    activeServiceTab === "all"
+      ? sortedItems
+      : sortedItems.filter(
+          (x) => normalizeCategory(x.serviceCategory) === activeServiceTab,
+        );
+
+  // ✅ Save orderIndex to server using existing PUT endpoint
+  const persistOrder = async (updatedAllItems: PortfolioItem[]) => {
+    setIsSavingOrder(true);
+    try {
+      // Only send updates where orderIndex changed
+      const originalMap = new Map(items.map((x) => [x.id, x.orderIndex]));
+      const changed = updatedAllItems.filter(
+        (x) => originalMap.get(x.id) !== x.orderIndex,
+      );
+
+      // If nothing changed, skip
+      if (changed.length === 0) {
+        setIsSavingOrder(false);
+        return;
+      }
+
+      // Update sequentially (safe)
+      for (const it of changed) {
+        const res = await fetch(`/api/admin/portfolio-items/${it.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          // send full object (most compatible with strict PUT backends)
+          body: JSON.stringify({
+            slug: it.slug,
+            title: it.title,
+            subTitle: it.subTitle,
+            industry: it.industry,
+            client: it.client,
+            badge: it.badge,
+            investment: it.investment,
+            totalValue: it.totalValue,
+            roi: it.roi,
+            description: it.description,
+            features: it.features || [],
+            techStack: it.techStack || [],
+            timeline: it.timeline,
+            imageUrl: it.imageUrl,
+            image: it.image || it.imageUrl,
+            isFeatured: Boolean(it.isFeatured),
+            orderIndex: Number(it.orderIndex || 0),
+            isActive: it.isActive !== false,
+            serviceCategory: it.serviceCategory || undefined,
+            projectUrl: it.projectUrl || "",
+            projectUrlLabel: it.projectUrlLabel || "",
+            seoDetails: it.seoDetails,
+            googleAdsDetails: it.googleAdsDetails,
+          }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.message || "Failed to update order");
+        }
+      }
+
+      await queryClient.invalidateQueries({
+        queryKey: ["/api/admin/portfolio-items"],
+      });
+
+      success("Portfolio order updated successfully.", "Saved");
+    } catch (err) {
+      console.error(err);
+      toastError(
+        (err as Error).message || "Failed to save portfolio order.",
+        "Error",
+      );
+    } finally {
+      setIsSavingOrder(false);
+    }
+  };
+
+  // ✅ Handle DnD reorder inside current tab (HTML5 drag and drop)
+  const handleDropReorder = async (toId: number) => {
+    const fromId = dragFromIdRef.current;
+    dragFromIdRef.current = null;
+
+    if (!fromId || fromId === toId) return;
+
+    const fromIndex = filteredItems.findIndex((x) => x.id === fromId);
+    const toIndex = filteredItems.findIndex((x) => x.id === toId);
+    if (fromIndex < 0 || toIndex < 0) return;
+
+    const reorderedFiltered = moveItem(filteredItems, fromIndex, toIndex);
+
+    // Build updated ALL items list with updated orderIndex
+    const updatedAll = [...sortedItems];
+
+    if (activeServiceTab === "all") {
+      // Global reorder: reassign orderIndex for all in the new order
+      const newAll = reorderedFiltered.map((x, idx) => ({
+        ...x,
+        orderIndex: idx + 1,
+      }));
+
+      // Merge back into updatedAll
+      const map = new Map(newAll.map((x) => [x.id, x]));
+      for (let i = 0; i < updatedAll.length; i++) {
+        const found = map.get(updatedAll[i].id);
+        if (found) updatedAll[i] = found;
+      }
+
+      await persistOrder(updatedAll);
+      return;
+    }
+
+    // Category reorder: only update orderIndex within that category
+    const categoryId = activeServiceTab;
+    const categorySet = new Set(
+      updatedAll
+        .filter((x) => normalizeCategory(x.serviceCategory) === categoryId)
+        .map((x) => x.id),
+    );
+
+    // Assign 1..N within this category based on new filtered order
+    const newCategory = reorderedFiltered.map((x, idx) => ({
+      ...x,
+      orderIndex: idx + 1,
+    }));
+    const newMap = new Map(newCategory.map((x) => [x.id, x.orderIndex]));
+
+    // Apply only to items in this category
+    const finalAll = updatedAll.map((x) => {
+      if (categorySet.has(x.id)) {
+        const nextOrder = newMap.get(x.id);
+        return nextOrder != null ? { ...x, orderIndex: nextOrder } : x;
+      }
+      return x;
+    });
+
+    await persistOrder(finalAll);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <h2 className="text-2xl font-bold text-brand-purple">
+          Portfolio Items
+        </h2>
+        <div className="flex items-center gap-2">
+          {isSavingOrder && (
+            <Badge className="bg-brand-purple text-white">Saving Order…</Badge>
+          )}
+          <Badge>{items.length} items</Badge>
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Portfolio Page Content</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Manage the hero copy, CTAs, stats, and testimonials that appear on
+            the public portfolio page.
+          </p>
+          <Button onClick={() => setContentDialogOpen(true)}>
+            {contentData
+              ? "Edit Portfolio Page Content"
+              : "Add Portfolio Page Content"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Dialog open={contentDialogOpen} onOpenChange={setContentDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {contentData
+                ? "Edit Portfolio Page Content"
+                : "Add Portfolio Page Content"}
+            </DialogTitle>
+          </DialogHeader>
+          {contentLoading ? (
+            <div className="py-6 text-center text-gray-600">
+              Loading content...
+            </div>
+          ) : contentError ? (
+            <div className="py-6 text-center text-red-600">
+              Failed to load portfolio content.
+            </div>
+          ) : (
+            <form className="space-y-4" onSubmit={handleSaveContent}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Hero Title</Label>
+                  <Input
+                    value={contentForm.heroTitle}
+                    onChange={(e) =>
+                      handleContentChange("heroTitle", e.target.value)
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <Label>Hero Highlight</Label>
+                  <Input
+                    value={contentForm.heroHighlight || ""}
+                    onChange={(e) =>
+                      handleContentChange("heroHighlight", e.target.value)
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Hero Subtitle</Label>
+                  <textarea
+                    value={contentForm.heroSubtitle || ""}
+                    onChange={(e) =>
+                      handleContentChange("heroSubtitle", e.target.value)
+                    }
+                    className="w-full border rounded-md p-2 mt-1 min-h-[72px]"
+                  />
+                </div>
+                <div>
+                  <Label>Hero Description</Label>
+                  <textarea
+                    value={contentForm.heroDescription || ""}
+                    onChange={(e) =>
+                      handleContentChange("heroDescription", e.target.value)
+                    }
+                    className="w-full border rounded-md p-2 mt-1 min-h-[72px]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Primary CTA Text</Label>
+                  <Input
+                    value={contentForm.heroPrimaryCtaText || ""}
+                    onChange={(e) =>
+                      handleContentChange(
+                        "heroPrimaryCtaText",
+                        e.target.value,
+                      )
+                    }
+                  />
+                </div>
+                <div>
+                  <Label>Primary CTA Link</Label>
+                  <Input
+                    value={contentForm.heroPrimaryCtaHref || ""}
+                    onChange={(e) =>
+                      handleContentChange(
+                        "heroPrimaryCtaHref",
+                        e.target.value,
+                      )
+                    }
+                    placeholder="/#case-studies"
+                  />
+                </div>
+                <div>
+                  <Label>Secondary CTA Text</Label>
+                  <Input
+                    value={contentForm.heroSecondaryCtaText || ""}
+                    onChange={(e) =>
+                      handleContentChange(
+                        "heroSecondaryCtaText",
+                        e.target.value,
+                      )
+                    }
+                  />
+                </div>
+                <div>
+                  <Label>Secondary CTA Link</Label>
+                  <Input
+                    value={contentForm.heroSecondaryCtaHref || ""}
+                    onChange={(e) =>
+                      handleContentChange(
+                        "heroSecondaryCtaHref",
+                        e.target.value,
+                      )
+                    }
+                    placeholder="/pricing-calculator"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="font-semibold">Hero Stats</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addHeroStat}
+                  >
+                    Add Stat
+                  </Button>
+                </div>
+                {(contentForm.heroStats || []).map((stat, index) => (
+                  <div
+                    key={index}
+                    className="grid grid-cols-1 md:grid-cols-12 gap-3"
+                  >
+                    <Input
+                      className="md:col-span-3"
+                      placeholder="KPI (e.g. 15+)"
+                      value={stat.kpi}
+                      onChange={(e) =>
+                        updateHeroStat(index, "kpi", e.target.value)
+                      }
+                    />
+                    <Input
+                      className="md:col-span-8"
+                      placeholder="Label"
+                      value={stat.label}
+                      onChange={(e) =>
+                        updateHeroStat(index, "label", e.target.value)
+                      }
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => removeHeroStat(index)}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+                {(contentForm.heroStats || []).length === 0 && (
+                  <p className="text-sm text-gray-500">
+                    No stats yet. Add one to highlight key metrics.
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <Label className="font-semibold">Testimonials</Label>
+                {(contentForm.testimonials || []).map(
+                  (testimonial, index) => (
+                    <div
+                      key={index}
+                      className="border rounded-lg p-3 space-y-2"
+                    >
+                      <textarea
+                        className="w-full border rounded-md p-2 min-h-[72px]"
+                        placeholder="Quote"
+                        value={testimonial.quote}
+                        onChange={(e) =>
+                          updateTestimonial(index, "quote", e.target.value)
+                        }
+                      />
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <Input
+                          placeholder="Who"
+                          value={testimonial.who}
+                          onChange={(e) =>
+                            updateTestimonial(index, "who", e.target.value)
+                          }
+                        />
+                        <Input
+                          placeholder="Tag / Industry"
+                          value={testimonial.tag || ""}
+                          onChange={(e) =>
+                            updateTestimonial(index, "tag", e.target.value)
+                          }
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => removeTestimonial(index)}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ),
+                )}
+                <Button
+                  className="bg-brand-coral text-white"
+                  type="button"
+                  variant="outline"
+                  onClick={addTestimonial}
+                >
+                  Add Testimonial
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Testimonials Title</Label>
+                  <Input
+                    value={contentForm.testimonialsTitle || ""}
+                    onChange={(e) =>
+                      handleContentChange("testimonialsTitle", e.target.value)
+                    }
+                    placeholder="What Our Clients Say"
+                  />
+                </div>
+                <div>
+                  <Label>Testimonials Subtitle</Label>
+                  <textarea
+                    value={contentForm.testimonialsSubtitle || ""}
+                    onChange={(e) =>
+                      handleContentChange(
+                        "testimonialsSubtitle",
+                        e.target.value,
+                      )
+                    }
+                    className="w-full border rounded-md p-2 mt-1 min-h-[72px]"
+                  />
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                className="bg-brand-purple"
+                disabled={savingContent}
+              >
+                {savingContent ? "Saving..." : "Save Portfolio Content"}
+              </Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* FORM COLUMN WITH SEPARATE SCROLL */}
+        <Card className="lg:col-span-1 max-h-[80vh] flex flex-col">
+          <CardHeader className="flex-shrink-0">
+            <CardTitle>
+              {editingId ? "Edit Portfolio Item" : "Add Portfolio Item"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex-1 overflow-y-auto pr-2">
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              <div>
+                <Label>Service Category</Label>
+                <select
+                  value={form.serviceCategory || ""}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    handleChange("serviceCategory", value);
+
+                    // Reset detail sections when switching category
+                    if (value === "seo") {
+                      setForm((prev) => ({
+                        ...prev,
+                        seoDetails: {
+                          ...(prev.seoDetails || emptySeoDetails),
+                        },
+                      }));
+                    } else if (value === "google-ads") {
+                      setForm((prev) => ({
+                        ...prev,
+                        googleAdsDetails: {
+                          ...(prev.googleAdsDetails ||
+                            emptyGoogleAdsDetails),
+                        },
+                      }));
+                    }
+                  }}
+                  className="w-full border border-gray-300 rounded-md p-2 mt-1 bg-white"
+                >
+                  <option value="">Select a service category...</option>
+                  {serviceCategories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label>Slug</Label>
+                <Input
+                  value={form.slug || ""}
+                  onChange={(e) => {
+                    setSlugTouched(true);
+                    handleChange("slug", e.target.value);
+                  }}
+                  placeholder="octupus-ai"
+                  required
+                />
+              </div>
+              <div>
+                <Label>Title</Label>
+                <Input
+                  value={form.title || ""}
+                  onChange={(e) => {
+                    const newTitle = e.target.value;
+                    handleChange("title", newTitle);
+
+                    // Auto-generate slug from title when creating & slug not manually changed
+                    if (!editingId && !slugTouched) {
+                      const autoSlug = slugifyTitle(newTitle);
+                      setForm((prev) => ({ ...prev, slug: autoSlug }));
+                    }
+                  }}
+                  placeholder="Octupus.ai – AI Agent Platform"
+                  required
+                />
+              </div>
+              <div>
+                <Label>Subtitle</Label>
+                <Input
+                  value={form.subTitle || ""}
+                  onChange={(e) => handleChange("subTitle", e.target.value)}
+                  placeholder="Revolutionizing AI Agent Deployment for Businesses"
+                />
+              </div>
+              <div>
+                <Label>Industry</Label>
+                <Input
+                  value={form.industry || ""}
+                  onChange={(e) => handleChange("industry", e.target.value)}
+                  placeholder="HealthTech / SaaS / Manufacturing"
+                  required
+                />
+              </div>
+              <div>
+                <Label>Client</Label>
+                <Input
+                  value={form.client || ""}
+                  onChange={(e) => handleChange("client", e.target.value)}
+                  placeholder="AC Graphics"
+                />
+              </div>
+              <div>
+                <Label>Badge</Label>
+                <Input
+                  value={form.badge || ""}
+                  onChange={(e) => handleChange("badge", e.target.value)}
+                  placeholder="Featured Case Study"
+                />
+              </div>
+              <div>
+                <Label>Description</Label>
+                <textarea
+                  value={form.description || ""}
+                  onChange={(e) =>
+                    handleChange("description", e.target.value)
+                  }
+                  placeholder="Short summary about this portfolio item"
+                  className="w-full border rounded-md p-2 mt-1 min-h-[96px]"
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <Label>Investment</Label>
+                  <Input
+                    value={form.investment || ""}
+                    onChange={(e) =>
+                      handleChange("investment", e.target.value)
+                    }
+                    placeholder="$6.9K"
+                  />
+                </div>
+                <div>
+                  <Label>Total Value</Label>
+                  <Input
+                    value={form.totalValue || ""}
+                    onChange={(e) =>
+                      handleChange("totalValue", e.target.value)
+                    }
+                    placeholder="$24K"
+                  />
+                </div>
+                {showROI && (
+                  <div>
+                    <Label>ROI</Label>
+                    <Input
+                      value={form.roi || ""}
+                      onChange={(e) => handleChange("roi", e.target.value)}
+                      placeholder="247%"
+                    />
+                  </div>
+                )}
+              </div>
+              <div>
+                <Label>Timeline</Label>
+                <Input
+                  value={form.timeline || ""}
+                  onChange={(e) => handleChange("timeline", e.target.value)}
+                  placeholder="6 weeks"
+                />
+              </div>
+              <div>
+                <Label>Image URL</Label>
+                <Input
+                  value={form.imageUrl || ""}
+                  onChange={(e) => handleChange("imageUrl", e.target.value)}
+                  placeholder="https://res.cloudinary.com/your-cloud-name/image/upload/..."
+                />
+              </div>
+              <div>
+                <Label>Image (optional, stored value)</Label>
+                <Input
+                  value={form.image || ""}
+                  onChange={(e) => handleChange("image", e.target.value)}
+                  placeholder="Cloudinary publicId or same as Image URL"
+                />
+              </div>
+              <div>
+                <Label>Upload Image</Label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={uploadingImage}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      setUploadingImage(true);
+                      const formData = new FormData();
+                      formData.append("image", file);
+                      const res = await fetch(
+                        "/api/upload/portfolio-image",
+                        {
+                          method: "POST",
+                          headers: {
+                            Authorization: `Bearer ${token}`,
+                          },
+                          body: formData,
+                        },
+                      );
+                      const data = await res.json();
+                      if (!res.ok || !data?.imageUrl) {
+                        throw new Error(data?.error || "Upload failed");
+                      }
+                      handleChange("imageUrl", data.imageUrl);
+                      if (data.filename) {
+                        handleChange("image", data.filename);
+                      }
+
+                      success("Image uploaded successfully.", "Upload");
+                    } catch (err) {
+                      console.error(err);
+                      toastError(
+                        (err as Error).message || "Image upload failed.",
+                        "Error",
+                      );
+                    } finally {
+                      setUploadingImage(false);
+                    }
+                  }}
+                  className="mt-1"
+                />
+                {uploadingImage && (
+                  <div className="mt-1 text-xs text-gray-500">
+                    Uploading to Cloudinary...
+                  </div>
+                )}
+                {form.imageUrl && !uploadingImage && (
+                  <div className="mt-2 text-sm text-gray-600 break-all">
+                    {form.imageUrl}
+                  </div>
+                )}
+              </div>
+
+              {/* NEW: Project URL / CTA */}
+              <div>
+                <Label>Project URL (site / app / download link)</Label>
+                <Input
+                  value={form.projectUrl || ""}
+                  onChange={(e) => handleChange("projectUrl", e.target.value)}
+                  placeholder="https://client-domain.com / App Store / Google Play / Drive link"
+                />
+              </div>
+              <div>
+                <Label>Project URL Label (button text)</Label>
+                <Input
+                  value={form.projectUrlLabel || ""}
+                  onChange={(e) =>
+                    handleChange("projectUrlLabel", e.target.value)
+                  }
+                  placeholder='e.g. "View Site", "Open App", "Download"'
+                />
+              </div>
+
+              {/* ---------- SEO SPECIFIC FIELDS ---------- */}
+              {isSeo && (
+                <div className="space-y-3 border rounded-lg p-3">
+                  <div className="font-semibold text-sm text-brand-purple">
+                    SEO Case Study Details
+                  </div>
+                  <div>
+                    <Label>SEO Overview</Label>
+                    <textarea
+                      value={seo.seoOverview || ""}
+                      onChange={(e) =>
+                        handleSeoDetailsChange("seoOverview", e.target.value)
+                      }
+                      className="w-full border rounded-md p-2 mt-1 min-h-[72px]"
+                      placeholder="Short SEO overview..."
+                    />
+                  </div>
+                  <div>
+                    <Label>Client Challenge</Label>
+                    <textarea
+                      value={seo.clientChallenge || ""}
+                      onChange={(e) =>
+                        handleSeoDetailsChange(
+                          "clientChallenge",
+                          e.target.value,
+                        )
+                      }
+                      className="w-full border rounded-md p-2 mt-1 min-h-[72px]"
+                      placeholder="Low traffic, no local ranking..."
+                    />
+                  </div>
+                  <div>
+                    <Label>Primary SEO Goal</Label>
+                    <Input
+                      value={seo.primarySeoGoal || ""}
+                      onChange={(e) =>
+                        handleSeoDetailsChange(
+                          "primarySeoGoal",
+                          e.target.value,
+                        )
+                      }
+                      placeholder="Increase organic traffic and rank top keywords on Page 1"
+                    />
+                  </div>
+
+                  <div>
+                    <Label>SEO Focus Areas (comma separated)</Label>
+                    <Input
+                      value={(seo.seoFocusAreas || []).join(", ")}
+                      onChange={(e) =>
+                        handleSeoDetailsChange(
+                          "seoFocusAreas",
+                          e.target.value
+                            .split(",")
+                            .map((s) => s.trim())
+                            .filter(Boolean),
+                        )
+                      }
+                      placeholder="Technical SEO, On-page SEO, Local SEO"
+                    />
+                  </div>
+                  <div>
+                    <Label>SEO Strategy Summary</Label>
+                    <textarea
+                      value={seo.seoStrategySummary || ""}
+                      onChange={(e) =>
+                        handleSeoDetailsChange(
+                          "seoStrategySummary",
+                          e.target.value,
+                        )
+                      }
+                      className="w-full border rounded-md p-2 mt-1 min-h-[72px]"
+                      placeholder="We improved site architecture, optimized content..."
+                    />
+                  </div>
+                  <div>
+                    <Label>SEO Tools Used (comma separated)</Label>
+                    <Input
+                      value={(seo.seoToolsUsed || []).join(", ")}
+                      onChange={(e) =>
+                        handleSeoDetailsChange(
+                          "seoToolsUsed",
+                          e.target.value
+                            .split(",")
+                            .map((s) => s.trim())
+                            .filter(Boolean),
+                        )
+                      }
+                      placeholder="Google Search Console, GA4, SEMrush, Ahrefs"
+                    />
+                  </div>
+                  <div>
+                    <Label>SEO Deliverables (comma separated)</Label>
+                    <Input
+                      value={(seo.seoDeliverables || []).join(", ")}
+                      onChange={(e) =>
+                        handleSeoDetailsChange(
+                          "seoDeliverables",
+                          e.target.value
+                            .split(",")
+                            .map((s) => s.trim())
+                            .filter(Boolean),
+                        )
+                      }
+                      placeholder="Site Audit, On-page Optimization, Link Building"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label>SEO Stat Tiles (max 4)</Label>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          handleSeoDetailsChange("stats", [
+                            ...(seo.stats || []),
+                            { label: "", value: "" },
+                          ])
+                        }
+                        disabled={(seo.stats || []).length >= 4}
+                      >
+                        Add Stat
+                      </Button>
+                    </div>
+                    {(seo.stats || []).map((stat, index) => (
+                      <div
+                        key={index}
+                        className="grid grid-cols-1 md:grid-cols-3 gap-2"
+                      >
+                        <Input
+                          placeholder="Label (e.g. Organic Traffic Growth)"
+                          value={stat.label}
+                          onChange={(e) => {
+                            const next = [...(seo.stats || [])];
+                            next[index] = {
+                              ...next[index],
+                              label: e.target.value,
+                            };
+                            handleSeoDetailsChange("stats", next);
+                          }}
+                        />
+                        <Input
+                          placeholder="Value (e.g. +180% in 4 months)"
+                          value={stat.value}
+                          onChange={(e) => {
+                            const next = [...(seo.stats || [])];
+                            next[index] = {
+                              ...next[index],
+                              value: e.target.value,
+                            };
+                            handleSeoDetailsChange("stats", next);
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => {
+                            const next = (seo.stats || []).filter(
+                              (_, i) => i !== index,
+                            );
+                            handleSeoDetailsChange("stats", next);
+                          }}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    ))}
+                    {(seo.stats || []).length === 0 && (
+                      <p className="text-xs text-gray-500">
+                        Optional: add up to 4 SEO stats to show as tiles.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ---------- GOOGLE ADS SPECIFIC FIELDS ---------- */}
+              {isGoogleAds && (
+                <div className="space-y-3 border rounded-lg p-3">
+                  <div className="font-semibold text-sm text-brand-purple">
+                    Google Ads Case Study Details
+                  </div>
+                  <div>
+                    <Label>Google Ads Summary Image URL</Label>
+                    <Input
+                      value={googleAds.googleAdsSummaryImage || ""}
+                      onChange={(e) =>
+                        handleGoogleAdsDetailsChange(
+                          "googleAdsSummaryImage",
+                          e.target.value,
+                        )
+                      }
+                      placeholder="Google Ads dashboard / hero image URL"
+                    />
+                  </div>
+                  <div>
+                    <Label>Industry (Ads Specific)</Label>
+                    <Input
+                      value={googleAds.industry || ""}
+                      onChange={(e) =>
+                        handleGoogleAdsDetailsChange(
+                          "industry",
+                          e.target.value,
+                        )
+                      }
+                      placeholder="E-commerce — Fashion / Local Service — Plumbing"
+                    />
+                  </div>
+                  <div>
+                    <Label>Timeline (Campaign Duration)</Label>
+                    <Input
+                      value={googleAds.timeline || ""}
+                      onChange={(e) =>
+                        handleGoogleAdsDetailsChange(
+                          "timeline",
+                          e.target.value,
+                        )
+                      }
+                      placeholder="6 weeks / 3 months ongoing"
+                    />
+                  </div>
+                  <div>
+                    <Label>Campaign Overview</Label>
+                    <textarea
+                      value={googleAds.campaignOverview || ""}
+                      onChange={(e) =>
+                        handleGoogleAdsDetailsChange(
+                          "campaignOverview",
+                          e.target.value,
+                        )
+                      }
+                      className="w-full border rounded-md p-2 mt-1 min-h-[72px]"
+                      placeholder="We managed lead gen campaigns to reduce CPL..."
+                    />
+                  </div>
+                  <div>
+                    <Label>Client Challenge</Label>
+                    <textarea
+                      value={googleAds.googleAdsClientChallenge || ""}
+                      onChange={(e) =>
+                        handleGoogleAdsDetailsChange(
+                          "googleAdsClientChallenge",
+                          e.target.value,
+                        )
+                      }
+                      className="w-full border rounded-md p-2 mt-1 min-h-[72px]"
+                      placeholder="High CPL, poor-quality traffic, no tracking..."
+                    />
+                  </div>
+                  <div>
+                    <Label>Primary Campaign Goal</Label>
+                    <Input
+                      value={googleAds.primaryCampaignGoal || ""}
+                      onChange={(e) =>
+                        handleGoogleAdsDetailsChange(
+                          "primaryCampaignGoal",
+                          e.target.value,
+                        )
+                      }
+                      placeholder="Reduce CPL and increase qualified leads"
+                    />
+                  </div>
+                  <div>
+                    <Label>Campaign Type</Label>
+                    <Input
+                      value={googleAds.campaignType || ""}
+                      onChange={(e) =>
+                        handleGoogleAdsDetailsChange(
+                          "campaignType",
+                          e.target.value,
+                        )
+                      }
+                      placeholder="Lead Generation / E-commerce / Brand Awareness"
+                    />
+                  </div>
+                  <div>
+                    <Label>Platforms / Networks (comma separated)</Label>
+                    <Input
+                      value={(googleAds.platforms || []).join(", ")}
+                      onChange={(e) =>
+                        handleGoogleAdsDetailsChange(
+                          "platforms",
+                          e.target.value
+                            .split(",")
+                            .map((s) => s.trim())
+                            .filter(Boolean),
+                        )
+                      }
+                      placeholder="Search, Display, Performance Max, Remarketing"
+                    />
+                  </div>
+                  <div>
+                    <Label>Monthly Ad Spend</Label>
+                    <Input
+                      value={googleAds.monthlyAdSpend || ""}
+                      onChange={(e) =>
+                        handleGoogleAdsDetailsChange(
+                          "monthlyAdSpend",
+                          e.target.value,
+                        )
+                      }
+                      placeholder="$2,000 / ₹1,20,000"
+                    />
+                  </div>
+                  <div>
+                    <Label>Google Ads Strategy Summary</Label>
+                    <textarea
+                      value={googleAds.googleAdsStrategySummary || ""}
+                      onChange={(e) =>
+                        handleGoogleAdsDetailsChange(
+                          "googleAdsStrategySummary",
+                          e.target.value,
+                        )
+                      }
+                      className="w-full border rounded-md p-2 mt-1 min-h-[72px]"
+                      placeholder="We restructured campaigns, focused on high-intent keywords..."
+                    />
+                  </div>
+                  <div>
+                    <Label>Target Locations (comma separated)</Label>
+                    <Input
+                      value={(googleAds.targetLocations || []).join(", ")}
+                      onChange={(e) =>
+                        handleGoogleAdsDetailsChange(
+                          "targetLocations",
+                          e.target.value
+                            .split(",")
+                            .map((s) => s.trim())
+                            .filter(Boolean),
+                        )
+                      }
+                      placeholder="UK, US, Manchester, London"
+                    />
+                  </div>
+                  <div>
+                    <Label>Tracking & Analytics Setup (comma separated)</Label>
+                    <Input
+                      value={(googleAds.trackingAndAnalytics || []).join(", ")}
+                      onChange={(e) =>
+                        handleGoogleAdsDetailsChange(
+                          "trackingAndAnalytics",
+                          e.target.value
+                            .split(",")
+                            .map((s) => s.trim())
+                            .filter(Boolean),
+                        )
+                      }
+                      placeholder="GA4, Google Ads Conversions, Call Tracking, Tag Manager"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label>Google Ads Stat Tiles (max 4)</Label>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          handleGoogleAdsDetailsChange("stats", [
+                            ...(googleAds.stats || []),
+                            { label: "", value: "" },
+                          ])
+                        }
+                        disabled={(googleAds.stats || []).length >= 4}
+                      >
+                        Add Stat
+                      </Button>
+                    </div>
+                    {(googleAds.stats || []).map((stat, index) => (
+                      <div
+                        key={index}
+                        className="grid grid-cols-1 md:grid-cols-3 gap-2"
+                      >
+                        <Input
+                          placeholder="Label (e.g. Cost Per Lead)"
+                          value={stat.label}
+                          onChange={(e) => {
+                            const next = [...(googleAds.stats || [])];
+                            next[index] = {
+                              ...next[index],
+                              label: e.target.value,
+                            };
+                            handleGoogleAdsDetailsChange("stats", next);
+                          }}
+                        />
+                        <Input
+                          placeholder="Value (e.g. ↓ 48% in 30 days)"
+                          value={stat.value}
+                          onChange={(e) => {
+                            const next = [...(googleAds.stats || [])];
+                            next[index] = {
+                              ...next[index],
+                              value: e.target.value,
+                            };
+                            handleGoogleAdsDetailsChange("stats", next);
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => {
+                            const next = (googleAds.stats || []).filter(
+                              (_, i) => i !== index,
+                            );
+                            handleGoogleAdsDetailsChange("stats", next);
+                          }}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    ))}
+                    {(googleAds.stats || []).length === 0 && (
+                      <p className="text-xs text-gray-500">
+                        Optional: add up to 4 Google Ads stats to show as
+                        metric tiles.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ---------- COMMON FIELDS CONTINUE ---------- */}
+              <div>
+                <Label>Features (comma separated)</Label>
+                <Input
+                  value={
+                    Array.isArray(form.features)
+                      ? form.features.join(", ")
+                      : (form.features as any) || ""
+                  }
+                  onChange={(e) => handleChange("features", e.target.value)}
+                  placeholder="Lead automation, Pipeline tracking"
+                />
+              </div>
+              <div>
+                <Label>Tech Stack (comma separated)</Label>
+                <Input
+                  value={
+                    Array.isArray(form.techStack)
+                      ? form.techStack.join(", ")
+                      : (form.techStack as any) || ""
+                  }
+                  onChange={(e) => handleChange("techStack", e.target.value)}
+                  placeholder="React, Node.js, Stripe"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={Boolean(form.isFeatured)}
+                    onCheckedChange={(v) => handleChange("isFeatured", v)}
+                    id="featured"
+                  />
+                  <Label htmlFor="featured">Featured</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={form.isActive !== false}
+                    onCheckedChange={(v) => handleChange("isActive", v)}
+                    id="active"
+                  />
+                  <Label htmlFor="active">Active</Label>
+                </div>
+              </div>
+              <div>
+                <Label>Order Index</Label>
+                <Input
+                  type="number"
+                  value={Number(form.orderIndex || 0)}
+                  onChange={(e) =>
+                    handleChange("orderIndex", Number(e.target.value))
+                  }
+                />
+              </div>
+
+              <div className="flex gap-3 pb-2">
+                <Button
+                  type="submit"
+                  className="bg-brand-purple"
+                  disabled={loading}
+                >
+                  {editingId
+                    ? loading
+                      ? "Saving..."
+                      : "Save Changes"
+                    : loading
+                      ? "Creating..."
+                      : "Create Item"}
+                </Button>
+                {editingId && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={resetForm}
+                  >
+                    Cancel
+                  </Button>
+                )}
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* LIST COLUMN */}
+        <div className="lg:col-span-2 space-y-4">
+          {isLoading ? (
+            <Card>
+              <CardContent className="p-6">Loading...</CardContent>
+            </Card>
+          ) : error ? (
+            <Card>
+              <CardContent className="p-6 text-red-600">
+                Failed to load items
+              </CardContent>
+            </Card>
+          ) : sortedItems.length === 0 ? (
+            <Card>
+              <CardContent className="p-6 text-gray-600">
+                No portfolio items yet.
+              </CardContent>
+            </Card>
+          ) : (
+            <Tabs
+              value={activeServiceTab}
+              onValueChange={setActiveServiceTab}
+              className="space-y-4"
+            >
+              {/* ✅ Scroll wrapper — SAME AS REFERENCE (no overflow-y) */}
+              <div
+                className="
+                  w-full overflow-x-auto overflow-y-hidden
+                  scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100
+                  [&::-webkit-scrollbar]:h-[4px]
+                  [&::-webkit-scrollbar-thumb]:rounded-full
+                  [&::-webkit-scrollbar-track]:rounded-full
+                "
+              >
+                <TabsList
+                  className="
+                    inline-flex w-max max-w-none
+                    flex-nowrap justify-start gap-2
+                    p-2
+                  "
+                >
+                  <TabsTrigger
+                    value="all"
+                    className="shrink-0 data-[state=active]:bg-brand-purple data-[state=active]:text-white data-[state=active]:shadow-sm"
+                  >
+                    All ({getCountForCategory("all", sortedItems)})
+                  </TabsTrigger>
+
+                  {serviceCategories.map((c) => (
+                    <TabsTrigger
+                      key={c.id}
+                      value={c.id}
+                      className="shrink-0 data-[state=active]:bg-brand-purple data-[state=active]:text-white data-[state=active]:shadow-sm"
+                    >
+                      {c.title} ({getCountForCategory(c.id, sortedItems)})
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
+
+              {/* ✅ Content — NO overflow-y */}
+              <TabsContent value={activeServiceTab} className="space-y-4">
+                <div className="text-xs text-gray-500">
+                  Tip: Drag cards using the handle to re-order. This updates{" "}
+                  <span className="font-semibold">orderIndex</span> and saves
+                  automatically.
+                </div>
+
+                {filteredItems.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-6 text-gray-600">
+                      No portfolio items found for this category.
+                    </CardContent>
+                  </Card>
+                ) : (
+                  filteredItems.map((it) => (
+                    <Card
+                      key={it.id}
+                      className="hover:shadow-sm transition-shadow"
+                      draggable={!isSavingOrder}
+                      onDragStart={() => {
+                        dragFromIdRef.current = it.id;
+                      }}
+                      onDragOver={(e) => {
+                        // allow drop
+                        e.preventDefault();
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        if (isSavingOrder) return;
+                        handleDropReorder(it.id);
+                      }}
+                    >
+                      <CardContent className="p-4 flex gap-4 items-center">
+                        {/* Drag handle */}
+                        <div
+                          className="
+                            flex items-center justify-center
+                            w-8 h-10
+                            rounded-md
+                            text-gray-400
+                            cursor-grab active:cursor-grabbing
+                            select-none
+                          "
+                          title="Drag to reorder"
+                          onMouseDown={() => {
+                            // make it feel like drag starts from handle
+                            dragFromIdRef.current = it.id;
+                          }}
+                        >
+                          <GripVertical className="w-5 h-5" />
+                        </div>
+
+                        <div className="w-24 h-16 bg-gray-100 rounded overflow-hidden flex items-center justify-center">
+                          {it.imageUrl ? (
+                            <img
+                              src={it.imageUrl}
+                              alt={it.title}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="text-xs text-gray-400">
+                              No Image
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <div className="font-semibold text-brand-purple">
+                              {it.title}
+                            </div>
+
+                            <Badge variant="secondary">
+                              Order {it.orderIndex}
+                            </Badge>
+
+                            {it.isFeatured && (
+                              <Badge className="bg-yellow-500">
+                                Featured
+                              </Badge>
+                            )}
+
+                            {it.isActive ? (
+                              <Badge className="bg-green-600">Active</Badge>
+                            ) : (
+                              <Badge variant="secondary">Inactive</Badge>
+                            )}
+
+                            {it.serviceCategory && (
+                              <Badge variant="secondary">
+                                {serviceCategories.find(
+                                  (x) => x.id === it.serviceCategory,
+                                )?.title || it.serviceCategory}
+                              </Badge>
+                            )}
+                          </div>
+
+                          <div className="text-sm text-gray-600">
+                            /portfolio/{it.slug} • {it.industry}
+                          </div>
+
+                          {it.projectUrl && (
+                            <div className="mt-1">
+                              <a
+                                href={it.projectUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-brand-purple underline"
+                              >
+                                {it.projectUrlLabel || "Open project"}
+                              </a>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setEditingId(it.id);
+                              setSlugTouched(true);
+                            }}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            onClick={() => handleDelete(it.id)}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </TabsContent>
+            </Tabs>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

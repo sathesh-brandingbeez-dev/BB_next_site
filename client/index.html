@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+  <!-- Google Consent Mode v2 : Default Denied -->
+  <!-- <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('consent', 'default', {
+      analytics_storage: 'denied',
+      ad_storage: 'denied',
+      ad_user_data: 'denied',
+      ad_personalization: 'denied'
+    });
+  </script> -->
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+
+    gtag('consent', 'default', {
+      analytics_storage: 'denied',
+      ad_storage: 'denied',
+      ad_user_data: 'denied',
+      ad_personalization: 'denied',
+      functionality_storage: 'denied',
+
+      // ✅ only here
+      wait_for_update: 500
+    });
+  </script>
+
+  <!-- End Google Consent Mode -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5" />
+  <meta name="format-detection" content="telephone=no" />
+  <base href="/" />
+
+  <title>BrandingBeez | White-Label SEO, Design & AI for US & UK Agencies</title>
+  <meta name="description"
+    content="Boost your agency growth with white-label SEO, PPC & web development services. Scale without hiring in-house teams. Trusted by 25+ agencies worldwide." />
+
+
+  <!-- Open Graph tags -->
+  <meta property="og:title" content="BrandingBeez | White-Label SEO, Design & AI for US & UK Agencies" />
+  <meta property="og:description"
+    content="Boost your agency growth with white-label SEO, PPC & web development services. Scale without hiring in-house teams. Trusted by 25+ agencies worldwide." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://brandingbeez.co.uk" />
+
+  <!-- Twitter Card tags -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="BrandingBeez | White-Label SEO, Design & AI for US & UK Agencies" />
+  <meta name="twitter:description"
+    content="White-label SEO, google ads, design, dev & AI services trusted by agencies in the US & UK. Scale your business with BrandingBeez's on-demand growth solutions." />
+
+  <!-- Third-party preconnects (safe + improves DNS/TLS handshake) -->
+  <!-- <link rel="preconnect" href="https://assets.calendly.com"> -->
+
+  <!-- ✅ KEEP PRECONNECTS -->
+  <link rel="preconnect" href="https://www.googletagmanager.com" />
+  <link rel="preconnect" href="https://www.google-analytics.com" />
+  <link rel="preconnect" href="https://i.ytimg.com" />
+  <link rel="preconnect" href="https://www.youtube-nocookie.com" />
+
+  <!-- ✅ Everything else: DNS prefetch only (CHEAP + safe) -->
+  <link rel="dns-prefetch" href="//scripts.clarity.ms" />
+  <link rel="dns-prefetch" href="//snap.licdn.com" />
+  <link rel="dns-prefetch" href="//px.ads.linkedin.com" />
+  <link rel="dns-prefetch" href="//static.hotjar.com" />
+  <link rel="dns-prefetch" href="//connect.facebook.net" />
+  <link rel="dns-prefetch" href="//www.facebook.com" />
+  <link rel="dns-prefetch" href="//stats.g.doubleclick.net" />
+  <link rel="dns-prefetch" href="//region1.google-analytics.com" />
+  <link rel="dns-prefetch" href="//analytics.google.com" />
+
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon.png">
+  <link rel="apple-touch-icon" href="/favicon.png">
+
+  <!-- ✅ BEST FONTS: Self-host Inter (no Google Fonts render-blocking) -->
+  <link rel="preload" as="font" href="/fonts/Inter-roman.var.woff2" type="font/woff2" crossorigin>
+  <link rel="preload" as="font" href="/fonts/Inter-italic.var.woff2" type="font/woff2" crossorigin>
+
+  <!-- Performance optimizations -->
+  <meta name="robots" content="index, follow">
+  <meta name="googlebot" content="index, follow">
+  <meta name="google-site-verification" content="xqlSp59sUF8tAYClepaa_ymf2QRwDXPBWbFryVEipMM" />
+  <!-- <link rel="canonical" href="https://brandingbeez.co.uk"> -->
+
+  <link rel="preload" as="image" href="/images/BB_Christmas_Logo.webp" type="image/webp" fetchpriority="high" />
+
+  <!-- Critical CSS inlined for instant rendering (single consolidated block) -->
+  <style>
+    :root {
+      --brand-coral: hsl(351, 83%, 61%);
+      --brand-purple: hsl(259, 60%, 25%);
+      --brand-yellow: hsl(51, 100%, 50%);
+      --brand-wings: hsl(340, 50%, 94%);
+      --background: hsl(0, 0%, 100%);
+      --foreground: hsl(222, 84%, 4.9%);
+    }
+
+    /* ✅ Self-hosted Inter */
+    @font-face {
+      font-family: "Inter";
+      src: url("/fonts/Inter-roman.var.woff2") format("woff2");
+      font-weight: 100 900;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: "Inter";
+      src: url("/fonts/Inter-italic.var.woff2") format("woff2");
+      font-weight: 100 900;
+      font-style: italic;
+      font-display: swap;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: white;
+      color: var(--foreground);
+      text-rendering: optimizeSpeed;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      line-height: 1.5;
+      background-color: var(--background);
+      color: var(--foreground);
+    }
+
+    #root {
+      min-height: 100vh;
+      contain: layout style paint;
+    }
+
+    /* Containers */
+    .container {
+      width: 100%;
+      margin: 0 auto;
+      padding: 0 1rem;
+      max-width: 1200px;
+    }
+
+    @media (min-width: 640px) {
+      .container {
+        max-width: 640px;
+      }
+    }
+
+    @media (min-width: 768px) {
+      .container {
+        max-width: 768px;
+        padding: 0 2rem;
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .container {
+        max-width: 1024px;
+      }
+    }
+
+    @media (min-width: 1280px) {
+      .container {
+        max-width: 1280px;
+      }
+    }
+
+    /* Hero / Background helpers */
+    .hero-bg {
+      background: linear-gradient(to bottom right, hsl(340, 50%, 94%), white, hsl(351, 83%, 61%, 0.05));
+      min-height: 100vh;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-gradient {
+      background: linear-gradient(135deg, #fef7f7 0%, #fff 50%, #fdf2f8 100%);
+    }
+
+    /* Typography helpers */
+    .text-hero-h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: hsl(17, 24%, 9%);
+      line-height: 1.2;
+      margin: 0;
+    }
+
+    @media (min-width: 768px) {
+      .text-hero-h1 {
+        font-size: 3rem;
+      }
+
+      .md\:text-5xl {
+        font-size: 3rem;
+        line-height: 1;
+      }
+
+      .md\:text-6xl {
+        font-size: 3.75rem;
+        line-height: 1;
+      }
+
+      .md\:py-32 {
+        padding-top: 8rem;
+        padding-bottom: 8rem;
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .text-hero-h1 {
+        font-size: 4rem;
+      }
+
+      .lg\:text-6xl {
+        font-size: 3.75rem;
+        line-height: 1;
+      }
+
+      .lg\:text-7xl {
+        font-size: 4.5rem;
+        line-height: 1;
+      }
+    }
+
+    .text-gradient {
+      background: linear-gradient(135deg, var(--brand-coral), var(--brand-purple));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-coral {
+      color: var(--brand-coral);
+    }
+
+    .bg-brand-coral {
+      background-color: var(--brand-coral);
+    }
+
+    /* Buttons */
+    .btn-primary {
+      background: linear-gradient(135deg, var(--brand-coral), #f472b6);
+      color: white;
+      font-weight: 600;
+      padding: 0.75rem 2rem;
+      border-radius: 9999px;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: transform 0.2s ease;
+      text-decoration: none;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+    }
+
+    .mx-auto {
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .text-center {
+      text-align: center;
+    }
+
+    .relative {
+      position: relative;
+    }
+
+    .flex {
+      display: flex;
+    }
+
+    .items-center {
+      align-items: center;
+    }
+
+    .justify-center {
+      justify-content: center;
+    }
+
+    .gap-4 {
+      gap: 1rem;
+    }
+
+    .space-y-6>*+* {
+      margin-top: 1.5rem;
+    }
+
+    .space-y-4>*+* {
+      margin-top: 1rem;
+    }
+
+    .mb-4 {
+      margin-bottom: 1rem;
+    }
+
+    .mb-6 {
+      margin-bottom: 1.5rem;
+    }
+
+    .mb-8 {
+      margin-bottom: 2rem;
+    }
+
+    .px-4 {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+
+    .pt-20 {
+      padding-top: 5rem;
+    }
+
+    .py-20 {
+      padding-top: 5rem;
+      padding-bottom: 5rem;
+    }
+
+    .p-6 {
+      padding: 1.5rem;
+    }
+
+    .text-4xl {
+      font-size: 2.25rem;
+      line-height: 2.5rem;
+    }
+
+    .text-5xl {
+      font-size: 3rem;
+      line-height: 1;
+    }
+
+    .text-6xl {
+      font-size: 3.75rem;
+      line-height: 1;
+    }
+
+    .text-lg {
+      font-size: 1.125rem;
+      line-height: 1.75rem;
+    }
+
+    .text-xl {
+      font-size: 1.25rem;
+      line-height: 1.75rem;
+    }
+
+    .font-bold {
+      font-weight: 700;
+    }
+
+    .font-semibold {
+      font-weight: 600;
+    }
+
+    .text-gray-600 {
+      color: rgb(75 85 99);
+    }
+
+    .text-gray-900 {
+      color: rgb(17 24 39);
+    }
+
+    .leading-tight {
+      line-height: 1.25;
+    }
+
+    /* Loading states */
+    .loading-skeleton {
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: loading 1.5s infinite;
+    }
+
+    @keyframes loading {
+      0% {
+        background-position: 200% 0;
+      }
+
+      100% {
+        background-position: -200% 0;
+      }
+    }
+
+    .preload-hidden {
+      opacity: 0;
+    }
+
+    .preload-visible {
+      opacity: 1;
+      transition: opacity 0.2s ease-in;
+    }
+
+    /* Reduce motion for accessibility */
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+
+  <!-- CSP-safe: load trackers via external file -->
+  <script src="/js/third-party-loader.js" defer></script>
+
+  <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "BrandingBeez",
+        "url": "https://brandingbeez.co.uk",
+        "logo": "https://brandingbeez.co.uk/assets/Logo_1751475462352-gtBR4PPW.jpg",
+        "description": "BrandingBeez provides dedicated resources for UK and USA markets worldwide, specializing in web development, SEO, and digital marketing with expert teams.",
+        "sameAs": [
+          "https://www.facebook.com/BrandingBeez/",
+          "https://www.linkedin.com/company/brandingbeez",
+          "https://www.behance.net/brandingbeez",
+          "https://in.pinterest.com/brandingbeez/_created/"
+        ],
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Global Operations",
+          "addressRegion": "UK & USA",
+          "addressCountry": "Global"
+        },
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "telephone": "+91-99524-62833",
+          "contactType": "Customer Service",
+          "email": "info@brandingbeez.co.uk",
+          "availableLanguage": "English"
+        },
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": "4.8",
+          "reviewCount": "150",
+          "bestRating": "5",
+          "worstRating": "1"
+        },
+        "offers": {
+          "@type": "Offer",
+          "url": "https://brandingbeez.co.uk/dedicated-resources",
+          "priceCurrency": "USD",
+          "price": "800.00",
+          "priceValidUntil": "2026-08-20",
+          "availability": "https://schema.org/InStock",
+          "itemCondition": "https://schema.org/NewCondition",
+          "description": "Dedicated resource teams starting at $800/month for UK, USA, and global markets."
+        },
+        "service": {
+          "@type": "Service",
+          "serviceType": "Dedicated Resource Teams",
+          "provider": {
+            "@type": "Organization",
+            "name": "BrandingBeez"
+          },
+          "areaServed": {
+            "@type": "GeoShape",
+            "name": "Global",
+            "addressCountry": [
+              "GB",
+              "US"
+            ]
+          },
+          "description": "Expert developers, designers, and specialists dedicated to your projects in the UK, USA, and worldwide.",
+          "hasOfferCatalog": {
+            "@type": "OfferCatalog",
+            "name": "Dedicated Resource Packages",
+            "itemListElement": [
+              {
+                "@type": "Offer",
+                "itemOffered": {
+                  "@type": "Service",
+                  "name": "Individual Resources"
+                }
+              },
+              {
+                "@type": "Offer",
+                "itemOffered": {
+                  "@type": "Service",
+                  "name": "Small Team (2-4 People)"
+                }
+              },
+              {
+                "@type": "Offer",
+                "itemOffered": {
+                  "@type": "Service",
+                  "name": "Large Team (5+ People)"
+                }
+              }
+            ]
+          }
+        }
+      }
+  </script>
+</head>
+
+<body>
+  <!-- LinkedIn (no script) -->
+  <noscript>
+    <img height="1" width="1" style="display:none;" alt=""
+      src="https://px.ads.linkedin.com/collect/?pid=8407852&fmt=gif" />
+  </noscript>
+  <!-- ------------------------------------------------------------------- -->
+
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KP5XRG5D" height="0" width="0"
+      style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+
+  <!-- ✅ Meta Pixel noscript fallback (keep this OUTSIDE the script) -->
+  <noscript>
+    <img height="1" width="1" style="display:none"
+      src="https://www.facebook.com/tr?id=1914816149105645&ev=PageView&noscript=1" />
+  </noscript>
+  <!-- End Meta Pixel Code -->
+
+  <div id="root"></div>
+  <!-- Load main script -->
+  <script type="module" src="/src/main.tsx"></script>
+
+  <!-- Non-critical scripts loaded asynchronously -->
+  <!-- Deferred loading will be handled via /third-party-loader.js -->
+</body>
+
+</html>
+
+
+
+<!-- Google tag (gtag.js) -->
+<!-- <script async src="https://www.googletagmanager.com/gtag/js?id=G-GNEDWN3ZNT"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-GNEDWN3ZNT');
+  </script> -->
+
+<!-- <script async src="https://www.googletagmanager.com/gtag/js?id=AW-17781107849"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'AW-17781107849');
+  </script> -->
