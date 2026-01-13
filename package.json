@@ -4,9 +4,11 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "dev": "tsx --env-file=.env server/index.ts",
-    "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
-    "start": "NODE_ENV=production node dist/index.js",
+    "dev": "next dev",
+    "dev:server": "tsx --env-file=.env server/index.ts",
+    "build": "next build",
+    "build:server": "esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "start": "next start",
     "check": "tsc"
   },
   "dependencies": {
@@ -84,6 +86,7 @@
     "multer-storage-cloudinary": "^4.0.0",
     "next-themes": "^0.4.6",
     "nodemailer": "^7.0.5",
+    "next": "^15.2.4",
     "openai": "^5.8.2",
     "openid-client": "^6.6.4",
     "passport": "^0.7.0",
